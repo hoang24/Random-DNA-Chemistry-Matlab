@@ -11,11 +11,11 @@ input_params = {
     },
     'theta_in': {
         'mean': 0.0003, # Sm_base, # [0, 0.0006) % CHANGE?
-        'variance': 0
+        'variance': 0.01
     },
     'theta_out': {
         'mean': 0.0003, # [0, 0.0006) % CHANGE?
-        'variance': 0
+        'variance': 0.01
     },
     'phi': {
         'mean': 3, # [0, 4) # k = 3 --> |phi-3| < 0.5
