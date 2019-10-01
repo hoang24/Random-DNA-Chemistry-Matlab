@@ -11,13 +11,16 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Global ordered type
     '''
 
-    def __init__(self, input_params={}):
+    def __init__(self, input_params={}, time_params={}):
         '''
+            Python initialization method.
             Args:
                 input_params (dict): input parameters
+                time_params (dict): timing parameters
         '''
 
         self.input_params = input_params.copy() # copy the input_params dict from params.py
+        self.time_params = time_params.copy() # copy the time_params dict from params.py
 
         nU, nL, U, L = self.create_species_single() # run create_species_single() method
         
@@ -86,6 +89,9 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             'k_IN': k_IN,
             'k_OUT': k_OUT
         }
+
+        numPerturb = self.get_numPerturb()
+        self.numPerturb = numPerturb
 
     def create_species_single(self):
         '''
@@ -464,6 +470,19 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             k_OUT.append(np.abs(norm_dist_out_value))
         k_OUT = tuple(k_OUT)
         return k_OUT
+
+    def get_numPerturb(self):
+        '''
+            Method to calculate the time-related variables
+            Returns:
+                numPerturb (int): number of perturbations while running the chemistry
+
+        '''
+        t_end = self.time_params['t_end']
+        t_perturb = self.time_params['t_perturb']
+        t_hold = self.time_params['t_hold']
+        numPerturb = int(np.ceil((t_end - t_perturb) / t_hold))
+        return numPerturb
 
     def run_chem(self):
         '''
