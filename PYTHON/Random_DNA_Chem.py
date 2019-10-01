@@ -73,6 +73,9 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             'nR': nR
         }
 
+        ic_U, ic_L, ic_F, ic_P, IC = self.create_initial_concentration(nU=nU, nL=nL, nF=nF, nP=nP)
+        self.concentration_lookup = IC
+
         k_BIND = self.create_rateConst_binding(nR_BIND)
         k_DISPLACE = self.create_rateConst_displacement(nR_DISPLACE)
         k_IN = self.create_rateConst_influx(nR_IN)
@@ -234,7 +237,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         O = np.random.choice(a=S, size=nO, replace=False)
         return nI, nO, I, O
 
-    def get_key_by_value_from_dict(self, dictionary, value):
+    def _get_key_by_value_from_dict(self, dictionary, value):
         '''
             Method to retrieve a key given its value in a dictionary. Apply to dictionary with non-repeating values.
             Args:
@@ -299,7 +302,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                     else: # invalid single strand notation
                         raise Exception('Unknown DNA species type. Defined type: U for Upper strand, L for Lower strand.')
                     if result_ds in order_lookup.values(): # if the resulted double strand made out of the single strand and the reactant double strand exists
-                        result_ds_order = self.get_key_by_value_from_dict(order_lookup, result_ds)
+                        result_ds_order = self._get_key_by_value_from_dict(order_lookup, result_ds)
                         if result_ds_order > reactant_ds_order: # if the resulted double strand has higher order than the reactant double strand
                             R_displace = reactant_ss + ' + ' + reactant_ds + ' --> ' + result_ds + ' + ' + result_ss
                             R_DISPLACE.append(R_displace)
@@ -366,16 +369,38 @@ class Random_DNA_Strand_Displacement_Circuit(object):
     def create_initial_concentration(self, nU, nL, nF, nP):
         '''
             Method to create sets of initial concentration for each DNA strand types.
+            Args:
+                nU (int): number of upper single strands
+                nL (int): number of lower single strands
+                nF (int): number of full double strands
+                nP (int): number of partial double strands
+            Returns:
+                ic_U (list): initial concentrations for all upper single strands
+                ic_L (list): initial concentrations for all lower single strands
+                ic_F (list): initial concentrations for all full double strands
+                ic_P (list): initial concentration for all partial double strands
+                IC (list): initial concentrations for all species, with this order: upper --> lower --> full --> partial
         '''
-        ic_U = np.random.randint(0, 1000, nU)
-        ic_L = np.random.randint(0, 1000, nL)
-        ic_F = np.random.randint(0, 1000, nF)
-        ic_P = np.random.randint(0, 1000, nP)
+        ic_U = list(np.random.randint(0, 1000, nU))
+        ic_L = list(np.random.randint(0, 1000, nL))
+        ic_F = list(np.random.randint(0, 1000, nF))
+        ic_P = list(np.random.randint(0, 1000, nP))
         IC = ic_U + ic_L + ic_F + ic_P
-        return IC
+        ic_U = tuple(ic_U)
+        ic_L = tuple(ic_L)
+        ic_F = tuple(ic_F)
+        ic_P = tuple(ic_P)
+        IC = tuple(IC)
+        return ic_U, ic_L, ic_F, ic_P, IC
 
     def create_rateConst_binding(self, nR_BIND):
-        # positive normal distribution
+        '''
+            Method to create sets reaction rate constants for all binding reactions.
+            Args:
+                nR_BIND (int): number of binding reactions
+            Returns:
+                k_BIND (list): list of reaction rate constants for all binding reactions
+        '''
         norm_dist_bind = np.random.normal(loc=self.input_params['theta']['mean'], 
                                           scale=np.sqrt(self.input_params['theta']['variance']),
                                           size=nR_BIND)
@@ -383,10 +408,17 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_BIND= []
         for norm_dist_bind_value in norm_dist_bind:
             k_BIND.append(np.abs(norm_dist_bind_value))
+        k_BIND = tuple(k_BIND)
         return k_BIND
 
     def create_rateConst_displacement(self, nR_DISPLACE):
-        # positive normal distribution
+        '''
+            Method to create sets reaction rate constants for all displacement reactions.
+            Args:
+                nR_DISPLACE (int): number of displacement reactions
+            Returns:
+                k_DISPLACE (list): list of reaction rate constants for all displacement reactions
+        '''
         norm_dist_displace = np.random.normal(loc=self.input_params['theta']['mean'], 
                                               scale=np.sqrt(self.input_params['theta']['variance']),
                                               size=nR_DISPLACE)
@@ -394,10 +426,17 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_DISPLACE = []
         for norm_dist_displace_value in norm_dist_displace:
             k_DISPLACE.append(np.abs(norm_dist_displace_value))
+        k_DISPLACE = tuple(k_DISPLACE)
         return k_DISPLACE
 
     def create_rateConst_influx(self, nR_IN):
-        # positive normal distribution
+        '''
+            Method to create sets reaction rate constants for all influx reactions.
+            Args:
+                nR_IN (int): number of influx reactions
+            Returns:
+                k_IN (list): list of reaction rate constants for all influx reactions
+        '''
         norm_dist_in = np.random.normal(loc=self.input_params['theta_in']['mean'], 
                                         scale=np.sqrt(self.input_params['theta_in']['variance']),
                                         size=nR_IN)
@@ -405,10 +444,17 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_IN = []
         for norm_dist_in_value in norm_dist_in:
             k_IN.append(np.abs(norm_dist_in_value))
+        k_IN = tuple(k_IN)
         return k_IN
 
     def create_rateConst_efflux(self, nR_OUT):
-        # positive normal distribution
+        '''
+            Method to create sets reaction rate constants for all efflux reactions.
+            Args:
+                nR_OUT (int): number of efflux reactions
+            Returns:
+                k_OUT (list): list of reaction rate constants for all efflux reactions
+        '''
         norm_dist_out = np.random.normal(loc=self.input_params['theta_out']['mean'], 
                                          scale=np.sqrt(self.input_params['theta_out']['variance']),
                                          size=nR_OUT)
@@ -416,19 +462,55 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_OUT = []
         for norm_dist_out_value in norm_dist_out:
             k_OUT.append(np.abs(norm_dist_out_value))
+        k_OUT = tuple(k_OUT)
         return k_OUT
 
     def run_chem(self):
+        '''
+            Method to run the random DNA strand displacement circuit chemistry
+            Args:
+                
+            Returns:
+                
+        '''
         pass
 
     def Gillespie_initialization(self):
+        '''
+            Method for Gillespie algorithm's initialization step
+            Args:
+                
+            Returns:
+                
+        '''
         pass
 
     def Gilespie_monte_carlo(self):
+        '''
+            Method for Gillespie algorithm's Monte Carlo step
+            Args:
+                
+            Returns:
+                
+        '''
         pass
 
     def Gillespie_update(self):
+        '''
+            Method for Gillespie algorithm's update step
+            Args:
+                
+            Returns:
+                
+        '''
         pass
 
     def Gillespie_iterate(self):
+        '''
+            Method for Gillespie algorithm's iterate step
+            Args:
+                
+            Returns:
+                
+        '''
         pass
