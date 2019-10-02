@@ -19,81 +19,16 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                 time_params (dict): timing parameters
         '''
 
-        self.input_params = input_params.copy() # copy the input_params dict from params.py
-        self.time_params = time_params.copy() # copy the time_params dict from params.py
+        self.input_params = input_params.copy()
+        self.time_params = time_params.copy()
+        self.species_lookup = self.create_species_lookup()
+        self.order_lookup = self.impose_order_partial()
+        self.reaction_lookup = self.create_reaction_lookup()
+        self.initial_concentration_lookup = self.create_concentration_lookup()
+        self.rateConst_lookup = self.create_rateConst_lookup()
+        self.update_time_params()
 
-        nU, nL, U, L = self.create_species_single() # run create_species_single() method
-        
-        nF, nP, F, P = self.create_species_double(nU=nU, nL=nL, U=U, L=L) # run create_species_double() method
-
-        self.mirror_selection()
-
-        order_lookup = self.impose_order_partial(P=P, nP=nP, F=F, nF=nF)
-        self.order_lookup = order_lookup
-
-        nS, nSS, nDS, S, SS, DS = self.create_all_species_sets(U=U, nU=nU, L=L, nL=nL, F=F, nF=nF, P=P, nP=nP)
-
-        nI, nO, I, O = self.create_influx_efflux(S=S, nS=nS)
-        self.species_lookup = {
-            'U': U,
-            'L': L,
-            'F': F,
-            'P': P,
-            'SS': SS,
-            'DS': DS,
-            'S': S,
-            'I': I,
-            'O': O,
-            'nU': nU,
-            'nL': nL,
-            'nF': nF,
-            'nP': nP,
-            'nSS': nSS,
-            'nDS': nDS,
-            'nS': nS,
-            'nI': nI,
-            'nO': nO
-        }
-
-        R_DISPLACE, nR_DISPLACE = self.create_reaction_displacement(SS=SS, order_lookup=order_lookup)
-        self.R_DISPLACE = R_DISPLACE
-        R_BIND, nR_BIND = self.create_reaction_binding(U=U, L=L, DS=DS)
-        self.R_BIND = R_BIND
-        R_IN, nR_IN = self.create_reaction_influx(I=I)
-        R_OUT, nR_OUT = self.create_reaction_efflux(O=O)
-        R, nR = self.create_all_reaction_set(R_BIND=R_BIND, R_DISPLACE=R_DISPLACE, R_IN=R_IN, R_OUT=R_OUT, 
-                                             nR_BIND=nR_BIND, nR_DISPLACE=nR_DISPLACE, nR_IN=nR_IN, nR_OUT=nR_OUT)
-        self.reaction_lookup = {
-            'R_DISPLACE': R_DISPLACE,
-            'R_BIND': R_BIND,
-            'R_IN': R_IN,
-            'R_OUT': R_OUT,
-            'R': R,
-            'nR_DISPLACE': nR_DISPLACE,
-            'nR_BIND': nR_BIND,
-            'nR_IN': nR_IN,
-            'nR_OUT': nR_OUT,
-            'nR': nR
-        }
-
-        ic_U, ic_L, ic_F, ic_P, IC = self.create_initial_concentration(nU=nU, nL=nL, nF=nF, nP=nP)
-        self.concentration_lookup = IC
-
-        k_BIND = self.create_rateConst_binding(nR_BIND)
-        k_DISPLACE = self.create_rateConst_displacement(nR_DISPLACE)
-        k_IN = self.create_rateConst_influx(nR_IN)
-        k_OUT = self.create_rateConst_efflux(nR_OUT)
-        self.rateConst_lookup = {
-            'k_BIND': k_BIND,
-            'k_DISPLACE': k_DISPLACE,
-            'k_IN': k_IN,
-            'k_OUT': k_OUT
-        }
-
-        numPerturb = self.get_numPerturb()
-        self.numPerturb = numPerturb
-
-    def create_species_single(self):
+    def _create_species_single(self):
         '''
             Method to initialize the set of single DNA strands
             Returns:
@@ -111,7 +46,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         L = L[0:nL]
         return nU, nL, U, L
 
-    def create_species_double(self, nU, nL, U, L):
+    def _create_species_double(self, nU, nL, U, L):
         '''
             Method to initialize the set of single DNA strands
             Args:
@@ -162,33 +97,12 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         return nF, nP, F, P
 
     def mirror_selection(self):
+        '''
+            Method to perform mirror selection
+        '''
         pass
 
-    def impose_order_partial(self, P, nP, F, nF):
-        '''
-            Method to create a lookup dictionary to show ordering of the double strands
-            Args:
-                P (tuple): set of partial double strands
-                nP (int): number of partial double strands
-                F (tuple): set of full double strands
-                nF (int): number of full double strands
-            Returns:
-                order_lookup (dict): lookup dictionary to show double strands' ordering
-        '''
-
-        order_lookup = {}
-        for p_index in range(nP):
-            partial_with_order = np.random.choice(a=P)
-            while partial_with_order in order_lookup.values():
-                partial_with_order = np.random.choice(a=P)
-            order_lookup.update({'{}'.format(p_index): partial_with_order})
-        if nF <= 1:
-            order_lookup.update({'max': F[0]})
-        else:
-            order_lookup.update({'max': F})
-        return order_lookup
-
-    def create_all_species_sets(self, U, nU, L, nL, F, nF, P, nP):
+    def _create_all_species_sets(self, U, nU, L, nL, F, nF, P, nP):
         '''
             Method to initialize the all-species sets
             Args:
@@ -225,7 +139,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
 
         return nS, nSS, nDS, S, SS, DS
 
-    def create_influx_efflux(self, S, nS):
+    def _create_influx_efflux(self, S, nS):
         '''
             Methods to create set of influx and efflux
             Args:
@@ -237,11 +151,63 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                 I (tuple): set of influx species
                 O (tuple): set of efflux species
         '''
+
         nI = int(round(self.input_params['a_in'] * nS))
         nO = int(round(self.input_params['a_out'] * nS))
         I = np.random.choice(a=S, size=nI, replace=False)
         O = np.random.choice(a=S, size=nO, replace=False)
         return nI, nO, I, O
+
+    def create_species_lookup(self):
+        '''
+            Methods to create a lookup dictionary for sets of species and number of species
+            Returns:
+                species_lookup (dict): lookup dictionary for sets of species and number of species
+        '''
+        nU, nL, U, L = self._create_species_single()
+        nF, nP, F, P = self._create_species_double(nU=nU, nL=nL, U=U, L=L)
+        nS, nSS, nDS, S, SS, DS = self._create_all_species_sets(U=U, nU=nU, L=L, nL=nL, F=F, nF=nF, P=P, nP=nP)
+        nI, nO, I, O = self._create_influx_efflux(S=S, nS=nS)
+        species_lookup = {
+            'U': U,
+            'L': L,
+            'F': F,
+            'P': P,
+            'SS': SS,
+            'DS': DS,
+            'S': S,
+            'I': I,
+            'O': O,
+            'nU': nU,
+            'nL': nL,
+            'nF': nF,
+            'nP': nP,
+            'nSS': nSS,
+            'nDS': nDS,
+            'nS': nS,
+            'nI': nI,
+            'nO': nO
+        }
+        return species_lookup
+
+    def impose_order_partial(self):
+        '''
+            Method to create a lookup dictionary to show ordering of the double strands
+            Returns:
+                order_lookup (dict): lookup dictionary for the orders of the partial double strands
+        '''
+
+        order_lookup = {}
+        for p_index in range(self.species_lookup['nP']):
+            partial_with_order = np.random.choice(a=self.species_lookup['P'])
+            while partial_with_order in order_lookup.values():
+                partial_with_order = np.random.choice(a=self.species_lookup['P'])
+            order_lookup.update({'{}'.format(p_index): partial_with_order})
+        if self.species_lookup['nF'] <= 1:
+            order_lookup.update({'max': self.species_lookup['F'][0]})
+        else:
+            order_lookup.update({'max': self.species_lookup['F']})
+        return order_lookup
 
     def _get_key_by_value_from_dict(self, dictionary, value):
         '''
@@ -261,7 +227,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             raise Exception('Value given does not exist in given dictionary. Value = {}'.format(value))
         return key
 
-    def create_reaction_binding(self, U, L, DS):
+    def _create_reaction_binding(self, U, L, DS):
         '''
             Method to create a set of binding reactions
             Args:
@@ -284,12 +250,11 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nR_BIND = len(R_BIND)
         return R_BIND, nR_BIND
 
-    def create_reaction_displacement(self, SS, order_lookup):
+    def _create_reaction_displacement(self, SS):
         '''
             Method to create a set of displacement reactions
             Args:
                 SS (tuple): set of all single strand species
-                order_lookup (dict): lookup dictionary showing all double strand species and their ordering
             Returns:
                 R_DISPLACE (tuple): set of displacement reactions
                 nR_DISPLACE (int): number of displacement reactions
@@ -297,7 +262,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
 
         R_DISPLACE = []
         for reactant_ss in SS: # for each single strand
-            for reactant_ds_order, reactant_ds in order_lookup.items(): # for each double strand in order
+            for reactant_ds_order, reactant_ds in self.order_lookup.items(): # for each double strand in order
                 if reactant_ss not in reactant_ds: # if single strand is not part of double strand
                     if 'U' in reactant_ss: # if single strand is upper strand
                         result_ds = reactant_ss + reactant_ds[-2:]
@@ -307,8 +272,8 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                         result_ss = reactant_ds[-2:]
                     else: # invalid single strand notation
                         raise Exception('Unknown DNA species type. Defined type: U for Upper strand, L for Lower strand.')
-                    if result_ds in order_lookup.values(): # if the resulted double strand made out of the single strand and the reactant double strand exists
-                        result_ds_order = self._get_key_by_value_from_dict(order_lookup, result_ds)
+                    if result_ds in self.order_lookup.values(): # if the resulted double strand made out of the single strand and the reactant double strand exists
+                        result_ds_order = self._get_key_by_value_from_dict(self.order_lookup, result_ds)
                         if result_ds_order > reactant_ds_order: # if the resulted double strand has higher order than the reactant double strand
                             R_displace = reactant_ss + ' + ' + reactant_ds + ' --> ' + result_ds + ' + ' + result_ss
                             R_DISPLACE.append(R_displace)
@@ -316,7 +281,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nR_DISPLACE = len(R_DISPLACE)
         return R_DISPLACE, nR_DISPLACE
 
-    def create_reaction_influx(self, I):
+    def _create_reaction_influx(self, I):
         '''
             Method to create a set of influx reactions
             Args:
@@ -333,7 +298,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nR_IN = len(R_IN)
         return R_IN, nR_IN
 
-    def create_reaction_efflux(self, O):
+    def _create_reaction_efflux(self, O):
         '''
             Method to create a set of efflux reactions
             Args:
@@ -350,7 +315,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nR_OUT = len(R_OUT)
         return R_OUT, nR_OUT
 
-    def create_all_reaction_set(self, R_BIND, R_DISPLACE, R_IN, R_OUT, nR_BIND, nR_DISPLACE, nR_IN, nR_OUT):
+    def _create_all_reaction_set(self, R_BIND, R_DISPLACE, R_IN, R_OUT, nR_BIND, nR_DISPLACE, nR_IN, nR_OUT):
         '''
             Method to create set of all reactions
             Args:
@@ -366,40 +331,81 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                 R (tuple): set of all reactions
                 nR (int): total number of reactions in network
         '''
-        R = R_BIND + R_DISPLACE + R_IN + R_OUT
+
+        R = tuple(R_BIND + R_DISPLACE + R_IN + R_OUT)
         nR = len(R)
         if nR != (nR_BIND + nR_DISPLACE + nR_IN + nR_OUT):
             raise BaseException
         return R, nR
 
-    def create_initial_concentration(self, nU, nL, nF, nP):
+    def create_reaction_lookup(self):
+        '''
+            Methods to create a lookup dictionary for sets of reactions and number of reactions
+            Returns:
+                reaction_lookup (dict): lookup dictionary for sets of reactions and number of reactions
+        '''
+
+        R_DISPLACE, nR_DISPLACE = self._create_reaction_displacement(SS=self.species_lookup['SS'])
+        R_BIND, nR_BIND = self._create_reaction_binding(U=self.species_lookup['U'], L=self.species_lookup['L'], DS=self.species_lookup['DS'])
+        R_IN, nR_IN = self._create_reaction_influx(I=self.species_lookup['I'])
+        R_OUT, nR_OUT = self._create_reaction_efflux(O=self.species_lookup['O'])
+        R, nR = self._create_all_reaction_set(R_BIND=R_BIND, R_DISPLACE=R_DISPLACE, R_IN=R_IN, R_OUT=R_OUT, 
+                                              nR_BIND=nR_BIND, nR_DISPLACE=nR_DISPLACE, nR_IN=nR_IN, nR_OUT=nR_OUT)
+        reaction_lookup = {
+            'R_DISPLACE': R_DISPLACE,
+            'R_BIND': R_BIND,
+            'R_IN': R_IN,
+            'R_OUT': R_OUT,
+            'R': R,
+            'nR_DISPLACE': nR_DISPLACE,
+            'nR_BIND': nR_BIND,
+            'nR_IN': nR_IN,
+            'nR_OUT': nR_OUT,
+            'nR': nR
+        }
+        return reaction_lookup
+
+    def _create_initial_concentration(self):
         '''
             Method to create sets of initial concentration for each DNA strand types.
-            Args:
-                nU (int): number of upper single strands
-                nL (int): number of lower single strands
-                nF (int): number of full double strands
-                nP (int): number of partial double strands
             Returns:
-                ic_U (list): initial concentrations for all upper single strands
-                ic_L (list): initial concentrations for all lower single strands
-                ic_F (list): initial concentrations for all full double strands
-                ic_P (list): initial concentration for all partial double strands
-                IC (list): initial concentrations for all species, with this order: upper --> lower --> full --> partial
+                ic_U (tuple): initial concentrations for all upper single strands
+                ic_L (tuple): initial concentrations for all lower single strands
+                ic_F (tuple): initial concentrations for all full double strands
+                ic_P (tuple): initial concentration for all partial double strands
+                IC (tuple): initial concentrations for all species, with this order: upper --> lower --> full --> partial
         '''
-        ic_U = list(np.random.randint(0, 1000, nU))
-        ic_L = list(np.random.randint(0, 1000, nL))
-        ic_F = list(np.random.randint(0, 1000, nF))
-        ic_P = list(np.random.randint(0, 1000, nP))
-        IC = ic_U + ic_L + ic_F + ic_P
+
+        ic_U = list(np.random.randint(0, 1000, self.species_lookup['nU']))
+        ic_L = list(np.random.randint(0, 1000, self.species_lookup['nL']))
+        ic_F = list(np.random.randint(0, 1000, self.species_lookup['nF']))
+        ic_P = list(np.random.randint(0, 1000, self.species_lookup['nP']))
+        IC = tuple(ic_U + ic_L + ic_F + ic_P)
         ic_U = tuple(ic_U)
         ic_L = tuple(ic_L)
         ic_F = tuple(ic_F)
         ic_P = tuple(ic_P)
-        IC = tuple(IC)
         return ic_U, ic_L, ic_F, ic_P, IC
 
-    def create_rateConst_binding(self, nR_BIND):
+    def create_concentration_lookup(self):
+        '''
+            Method to create a lookup dictionary for all concentrations for each species
+            Returns:
+                initial_concentration_lookup (dict): lookup dictionary for initial concentration of each species
+                concentration_lookup (dict): lookup dictionary for all concentrations of each species
+        '''
+
+        ic_U, ic_L, ic_F, ic_P, IC = self._create_initial_concentration()
+        initial_concentration_lookup = {
+            '[U]': ic_U,
+            '[L]': ic_L,
+            '[F]': ic_F,
+            '[P]': ic_P,
+            '[S]': IC
+        }
+        return initial_concentration_lookup
+
+    def _create_rateConst_binding(self, nR_BIND):
         '''
             Method to create sets reaction rate constants for all binding reactions.
             Args:
@@ -407,6 +413,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 k_BIND (list): list of reaction rate constants for all binding reactions
         '''
+
         norm_dist_bind = np.random.normal(loc=self.input_params['theta']['mean'], 
                                           scale=np.sqrt(self.input_params['theta']['variance']),
                                           size=nR_BIND)
@@ -417,7 +424,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_BIND = tuple(k_BIND)
         return k_BIND
 
-    def create_rateConst_displacement(self, nR_DISPLACE):
+    def _create_rateConst_displacement(self, nR_DISPLACE):
         '''
             Method to create sets reaction rate constants for all displacement reactions.
             Args:
@@ -425,6 +432,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 k_DISPLACE (list): list of reaction rate constants for all displacement reactions
         '''
+
         norm_dist_displace = np.random.normal(loc=self.input_params['theta']['mean'], 
                                               scale=np.sqrt(self.input_params['theta']['variance']),
                                               size=nR_DISPLACE)
@@ -435,7 +443,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_DISPLACE = tuple(k_DISPLACE)
         return k_DISPLACE
 
-    def create_rateConst_influx(self, nR_IN):
+    def _create_rateConst_influx(self, nR_IN):
         '''
             Method to create sets reaction rate constants for all influx reactions.
             Args:
@@ -443,6 +451,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 k_IN (list): list of reaction rate constants for all influx reactions
         '''
+
         norm_dist_in = np.random.normal(loc=self.input_params['theta_in']['mean'], 
                                         scale=np.sqrt(self.input_params['theta_in']['variance']),
                                         size=nR_IN)
@@ -453,7 +462,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_IN = tuple(k_IN)
         return k_IN
 
-    def create_rateConst_efflux(self, nR_OUT):
+    def _create_rateConst_efflux(self, nR_OUT):
         '''
             Method to create sets reaction rate constants for all efflux reactions.
             Args:
@@ -461,6 +470,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 k_OUT (list): list of reaction rate constants for all efflux reactions
         '''
+
         norm_dist_out = np.random.normal(loc=self.input_params['theta_out']['mean'], 
                                          scale=np.sqrt(self.input_params['theta_out']['variance']),
                                          size=nR_OUT)
@@ -471,18 +481,36 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_OUT = tuple(k_OUT)
         return k_OUT
 
-    def get_numPerturb(self):
+    def create_rateConst_lookup(self):
         '''
-            Method to calculate the time-related variables
+            Method to create a lookup dictionary for rate constants for each types of reactions.
             Returns:
-                numPerturb (int): number of perturbations while running the chemistry
+                rateConst_lookup (dict): lookup dictionary for all rate constants.
+        '''
+
+        k_BIND = self._create_rateConst_binding(self.reaction_lookup['nR_BIND'])
+        k_DISPLACE = self._create_rateConst_displacement(self.reaction_lookup['nR_DISPLACE'])
+        k_IN = self._create_rateConst_influx(self.reaction_lookup['nR_IN'])
+        k_OUT = self._create_rateConst_efflux(self.reaction_lookup['nR_OUT'])
+        rateConst_lookup = {
+            'k_BIND': k_BIND,
+            'k_DISPLACE': k_DISPLACE,
+            'k_IN': k_IN,
+            'k_OUT': k_OUT
+        }
+        return rateConst_lookup
+
+    def update_time_params(self):
+        '''
+            Method to calculate the time-related variables and update the time_params dictionary
 
         '''
+
         t_end = self.time_params['t_end']
         t_perturb = self.time_params['t_perturb']
         t_hold = self.time_params['t_hold']
-        numPerturb = int(np.ceil((t_end - t_perturb) / t_hold))
-        return numPerturb
+        num_perturb = int(np.ceil((t_end - t_perturb) / t_hold))
+        self.time_params.update({'num_perturb': num_perturb})
 
     def run_chem(self):
         '''
@@ -492,7 +520,11 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 
         '''
-        pass
+
+        t = self.time_params['t_start']
+        iteration = 0
+        while t < self.time_params['t_end']:
+            pass
 
     def Gillespie_initialization(self):
         '''
@@ -502,6 +534,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 
         '''
+
         pass
 
     def Gilespie_monte_carlo(self):
@@ -512,6 +545,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 
         '''
+
         pass
 
     def Gillespie_update(self):
@@ -522,6 +556,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 
         '''
+
         pass
 
     def Gillespie_iterate(self):
@@ -532,4 +567,5 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Returns:
                 
         '''
+
         pass
