@@ -25,7 +25,7 @@ for key, value in random_DNA_network.rateConst_lookup.items():
     print('{} ~~ {}'.format(key, value))
     print('\n')
 
-print('intial concentration: {}'.format(random_DNA_network.initial_concentration_lookup))
+print('intial concentration: {}'.format(random_DNA_network.concentration_lookup))
 
 print(random_DNA_network.input_params)
 print(random_DNA_network.time_params)

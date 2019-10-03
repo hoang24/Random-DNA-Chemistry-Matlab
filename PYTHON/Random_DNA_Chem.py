@@ -9,6 +9,21 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Optimal random DNA chemistry using results from optimization methods (turning point measure and genetic search)
             (nL, nU, k) = (3, 4, 3)
             Global ordered type
+        Attributes:
+            input_params (dict): lookup dictionary for input parameters
+            time_params (dict): lookup dictionary for timing parameters
+            species_lookup (dict): lookup dictionary for species names and number of species
+            order_lookup (dict): lookup dictionary for orders of partial double strands
+            reaction_lookup (dict): lookup dictionary for orders of partial double strands
+            concentration_lookup (dict): lookup dictionary for all concentrations of all species
+            rateConst_lookup (dict): lookup dictionary for reaction rate constants of all reactions
+        Methods:
+            create_species_lookup()
+            impose_order_partial()
+            create_reaction_lookup()
+            create_concentration_lookup()
+            create_rateConst_lookup()
+            update_time_params()
     '''
 
     def __init__(self, input_params={}, time_params={}):
@@ -24,7 +39,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         self.species_lookup = self.create_species_lookup()
         self.order_lookup = self.impose_order_partial()
         self.reaction_lookup = self.create_reaction_lookup()
-        self.initial_concentration_lookup = self.create_concentration_lookup()
+        self.concentration_lookup = self.create_concentration_lookup()
         self.rateConst_lookup = self.create_rateConst_lookup()
         self.update_time_params()
 
@@ -42,8 +57,8 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nU = self.input_params['n'] - nL
         U = ('U0', 'U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'U8', 'U9')
         L = ('L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9')
-        U = U[0:nU]
-        L = L[0:nL]
+        U = tuple(U[0:nU])
+        L = tuple(L[0:nL])
         return nU, nL, U, L
 
     def _create_species_double(self, nU, nL, U, L):
@@ -396,16 +411,33 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         '''
 
         ic_U, ic_L, ic_F, ic_P, IC = self._create_initial_concentration()
-        initial_concentration_lookup = {
-            '[U]': ic_U,
-            '[L]': ic_L,
-            '[F]': ic_F,
-            '[P]': ic_P,
-            '[S]': IC
-        }
-        return initial_concentration_lookup
 
-    def _create_rateConst_binding(self, nR_BIND):
+        conU = {}
+        for u_index, u in enumerate(self.species_lookup.get('U')):
+            conU.update({'{}'.format(u): [ic_U[u_index]]})
+
+        conL = {}
+        for l_index, l in enumerate(self.species_lookup.get('L')):
+            conL.update({'{}'.format(l): [ic_L[l_index]]})
+
+        conF = {}
+        for f_index, f in enumerate(self.species_lookup.get('F')):
+            conF.update({'{}'.format(f): [ic_F[f_index]]})
+
+        conP = {}
+        for p_index, p in enumerate(self.species_lookup.get('P')):
+            conP.update({'{}'.format(p): [ic_P[p_index]]})
+
+        concentration_lookup = {
+            'conU': conU,
+            'conL': conL,
+            'conF': conF,
+            'conP': conP
+        }
+
+        return concentration_lookup
+
+    def _create_initial_rateConst_binding(self, nR_BIND):
         '''
             Method to create sets reaction rate constants for all binding reactions.
             Args:
@@ -418,13 +450,13 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                                           scale=np.sqrt(self.input_params['theta']['variance']),
                                           size=nR_BIND)
         self.input_params['theta'].update({'norm_dist_bind': norm_dist_bind})
-        k_BIND= []
+        k_BIND = []
         for norm_dist_bind_value in norm_dist_bind:
             k_BIND.append(np.abs(norm_dist_bind_value))
         k_BIND = tuple(k_BIND)
         return k_BIND
 
-    def _create_rateConst_displacement(self, nR_DISPLACE):
+    def _create_initial_rateConst_displacement(self, nR_DISPLACE):
         '''
             Method to create sets reaction rate constants for all displacement reactions.
             Args:
@@ -443,7 +475,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_DISPLACE = tuple(k_DISPLACE)
         return k_DISPLACE
 
-    def _create_rateConst_influx(self, nR_IN):
+    def _create_initial_rateConst_influx(self, nR_IN):
         '''
             Method to create sets reaction rate constants for all influx reactions.
             Args:
@@ -462,7 +494,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         k_IN = tuple(k_IN)
         return k_IN
 
-    def _create_rateConst_efflux(self, nR_OUT):
+    def _create_initial_rateConst_efflux(self, nR_OUT):
         '''
             Method to create sets reaction rate constants for all efflux reactions.
             Args:
@@ -485,18 +517,35 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         '''
             Method to create a lookup dictionary for rate constants for each types of reactions.
             Returns:
-                rateConst_lookup (dict): lookup dictionary for all rate constants.
+                rateConst_lookup (dict): lookup dictionary for all rate constants of each reactions.
         '''
 
-        k_BIND = self._create_rateConst_binding(self.reaction_lookup['nR_BIND'])
-        k_DISPLACE = self._create_rateConst_displacement(self.reaction_lookup['nR_DISPLACE'])
-        k_IN = self._create_rateConst_influx(self.reaction_lookup['nR_IN'])
-        k_OUT = self._create_rateConst_efflux(self.reaction_lookup['nR_OUT'])
+        k_BIND = self._create_initial_rateConst_binding(nR_BIND=self.reaction_lookup['nR_BIND'])
+        k_DISPLACE = self._create_initial_rateConst_displacement(nR_DISPLACE=self.reaction_lookup['nR_DISPLACE'])
+        k_IN = self._create_initial_rateConst_influx(nR_IN=self.reaction_lookup['nR_IN'])
+        k_OUT = self._create_initial_rateConst_efflux(nR_OUT=self.reaction_lookup['nR_OUT'])
+
+        rate_BIND = {}
+        for bind_index, r_bind in enumerate(self.reaction_lookup.get('R_BIND')):
+            rate_BIND.update({'{}'.format(r_bind): [k_BIND[bind_index]]})
+
+        rate_DISPLACE = {}
+        for displace_index, r_displace in enumerate(self.reaction_lookup.get('R_DISPLACE')):
+            rate_DISPLACE.update({'{}'.format(r_displace): [k_DISPLACE[displace_index]]})
+
+        rate_IN = {}
+        for in_index, r_in in enumerate(self.reaction_lookup.get('R_IN')):
+            rate_IN.update({'{}'.format(r_in): [k_IN[in_index]]})
+
+        rate_OUT = {}
+        for out_index, r_out in enumerate(self.reaction_lookup.get('R_OUT')):
+            rate_OUT.update({'{}'.format(r_out): [k_OUT[out_index]]})
+
         rateConst_lookup = {
-            'k_BIND': k_BIND,
-            'k_DISPLACE': k_DISPLACE,
-            'k_IN': k_IN,
-            'k_OUT': k_OUT
+            'rate_BIND': rate_BIND,
+            'rate_DISPLACE': rate_DISPLACE,
+            'rate_IN': rate_IN,
+            'rate_OUT': rate_OUT
         }
         return rateConst_lookup
 
