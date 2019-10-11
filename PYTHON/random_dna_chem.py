@@ -2,7 +2,7 @@ import numpy as np
 import time
 
 
-class Random_DNA_Strand_Displacement_Circuit(object):
+class RandomDNAStrandDisplacementCircuit(object):
     '''
         Random DNA Strand Displacement Circuit class to generate a random DNA strand diaplacement circuit
         Take parameters (input, etc.) from params.py
@@ -54,11 +54,17 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         '''
 
         nL = int(round(self.input_params['n'] / (1 + self.input_params['p'])))
+        L = []
+        for nl in range(nL):
+            L.append('L{}'.format(nl))
+        L = tuple(L)
+
         nU = self.input_params['n'] - nL
-        U = ('U0', 'U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'U8', 'U9')
-        L = ('L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9')
-        U = tuple(U[0:nU])
-        L = tuple(L[0:nL])
+        U = []
+        for nu in range(nU):
+            U.append('U{}'.format(nu))
+        U = tuple(U)
+
         return nU, nL, U, L
 
     def _create_species_double(self, nU, nL, U, L):
@@ -109,6 +115,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nP = len(P)
         F = tuple(F)
         P = tuple(P)
+
         return nF, nP, F, P
 
     def mirror_selection(self):
@@ -171,6 +178,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nO = int(round(self.input_params['a_out'] * nS))
         I = np.random.choice(a=S, size=nI, replace=False)
         O = np.random.choice(a=S, size=nO, replace=False)
+
         return nI, nO, I, O
 
     def create_species_lookup(self):
@@ -203,6 +211,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             'nI': nI,
             'nO': nO
         }
+
         return species_lookup
 
     def impose_order_partial(self):
@@ -217,11 +226,11 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             partial_with_order = np.random.choice(a=self.species_lookup['P'])
             while partial_with_order in order_lookup.values():
                 partial_with_order = np.random.choice(a=self.species_lookup['P'])
-            order_lookup.update({'{}'.format(p_index): partial_with_order})
-        if self.species_lookup['nF'] <= 1:
-            order_lookup.update({'max': self.species_lookup['F'][0]})
-        else:
-            order_lookup.update({'max': self.species_lookup['F']})
+            order_lookup.update({p_index: partial_with_order})
+
+        for f_index, f in enumerate(self.species_lookup['F']):
+            order_lookup.update({self.species_lookup['nP'] + f_index: f})
+
         return order_lookup
 
     def _get_key_by_value_from_dict(self, dictionary, value):
@@ -240,6 +249,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                 key = item[0]
         if key == -1:
             raise Exception('Value given does not exist in given dictionary. Value = {}'.format(value))
+
         return key
 
     def _create_reaction_binding(self, U, L, DS):
@@ -263,6 +273,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                     R_BIND.append(R_bind)
         R_BIND = tuple(R_BIND)
         nR_BIND = len(R_BIND)
+
         return R_BIND, nR_BIND
 
     def _create_reaction_displacement(self, SS):
@@ -294,6 +305,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                             R_DISPLACE.append(R_displace)
         R_DISPLACE = tuple(R_DISPLACE)
         nR_DISPLACE = len(R_DISPLACE)
+
         return R_DISPLACE, nR_DISPLACE
 
     def _create_reaction_influx(self, I):
@@ -311,6 +323,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             R_IN.append(R_in)
         R_IN = tuple(R_IN)
         nR_IN = len(R_IN)
+
         return R_IN, nR_IN
 
     def _create_reaction_efflux(self, O):
@@ -328,6 +341,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             R_OUT.append(R_out)
         R_OUT = tuple(R_OUT)
         nR_OUT = len(R_OUT)
+
         return R_OUT, nR_OUT
 
     def _create_all_reaction_set(self, R_BIND, R_DISPLACE, R_IN, R_OUT, nR_BIND, nR_DISPLACE, nR_IN, nR_OUT):
@@ -351,6 +365,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         nR = len(R)
         if nR != (nR_BIND + nR_DISPLACE + nR_IN + nR_OUT):
             raise BaseException
+
         return R, nR
 
     def create_reaction_lookup(self):
@@ -378,6 +393,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             'nR_OUT': nR_OUT,
             'nR': nR
         }
+
         return reaction_lookup
 
     def _create_initial_concentration(self):
@@ -388,19 +404,14 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                 ic_L (tuple): initial concentrations for all lower single strands
                 ic_F (tuple): initial concentrations for all full double strands
                 ic_P (tuple): initial concentration for all partial double strands
-                IC (tuple): initial concentrations for all species, with this order: upper --> lower --> full --> partial
         '''
 
-        ic_U = list(np.random.randint(0, 1000, self.species_lookup['nU']))
-        ic_L = list(np.random.randint(0, 1000, self.species_lookup['nL']))
-        ic_F = list(np.random.randint(0, 1000, self.species_lookup['nF']))
-        ic_P = list(np.random.randint(0, 1000, self.species_lookup['nP']))
-        IC = tuple(ic_U + ic_L + ic_F + ic_P)
-        ic_U = tuple(ic_U)
-        ic_L = tuple(ic_L)
-        ic_F = tuple(ic_F)
-        ic_P = tuple(ic_P)
-        return ic_U, ic_L, ic_F, ic_P, IC
+        ic_U = tuple(np.random.randint(0, 1000, self.species_lookup['nU']))
+        ic_L = tuple(np.random.randint(0, 1000, self.species_lookup['nL']))
+        ic_F = tuple(np.random.randint(0, 1000, self.species_lookup['nF']))
+        ic_P = tuple(np.random.randint(0, 1000, self.species_lookup['nP']))
+
+        return ic_U, ic_L, ic_F, ic_P
 
     def create_concentration_lookup(self):
         '''
@@ -410,7 +421,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
                 concentration_lookup (dict): lookup dictionary for all concentrations of each species
         '''
 
-        ic_U, ic_L, ic_F, ic_P, IC = self._create_initial_concentration()
+        ic_U, ic_L, ic_F, ic_P = self._create_initial_concentration()
 
         conU = {}
         for u_index, u in enumerate(self.species_lookup.get('U')):
@@ -443,7 +454,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Args:
                 nR_BIND (int): number of binding reactions
             Returns:
-                k_BIND (list): list of reaction rate constants for all binding reactions
+                k_BIND (tuple): list of reaction rate constants for all binding reactions
         '''
 
         norm_dist_bind = np.random.normal(loc=self.input_params['theta']['mean'], 
@@ -454,6 +465,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         for norm_dist_bind_value in norm_dist_bind:
             k_BIND.append(np.abs(norm_dist_bind_value))
         k_BIND = tuple(k_BIND)
+
         return k_BIND
 
     def _create_initial_rateConst_displacement(self, nR_DISPLACE):
@@ -462,7 +474,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             Args:
                 nR_DISPLACE (int): number of displacement reactions
             Returns:
-                k_DISPLACE (list): list of reaction rate constants for all displacement reactions
+                k_DISPLACE (tuple): list of reaction rate constants for all displacement reactions
         '''
 
         norm_dist_displace = np.random.normal(loc=self.input_params['theta']['mean'], 
@@ -473,6 +485,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         for norm_dist_displace_value in norm_dist_displace:
             k_DISPLACE.append(np.abs(norm_dist_displace_value))
         k_DISPLACE = tuple(k_DISPLACE)
+
         return k_DISPLACE
 
     def _create_initial_rateConst_influx(self, nR_IN):
@@ -492,6 +505,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         for norm_dist_in_value in norm_dist_in:
             k_IN.append(np.abs(norm_dist_in_value))
         k_IN = tuple(k_IN)
+
         return k_IN
 
     def _create_initial_rateConst_efflux(self, nR_OUT):
@@ -511,6 +525,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
         for norm_dist_out_value in norm_dist_out:
             k_OUT.append(np.abs(norm_dist_out_value))
         k_OUT = tuple(k_OUT)
+
         return k_OUT
 
     def create_rateConst_lookup(self):
@@ -547,6 +562,7 @@ class Random_DNA_Strand_Displacement_Circuit(object):
             'rate_IN': rate_IN,
             'rate_OUT': rate_OUT
         }
+
         return rateConst_lookup
 
     def update_time_params(self):
