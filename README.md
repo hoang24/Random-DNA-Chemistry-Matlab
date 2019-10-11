@@ -1,2 +1,2 @@
-# Random_DNA_Chemistry
-Random DNA strand displacement circuits with Gillespie algorithm implementation.
+# Random DNA Chemistry (MATLAB version)
+Random DNA strand displacement circuits with Gillespie algorithm implementation, written in MATLAB
